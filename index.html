@@ -2,215 +2,214 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>GEMINI DOOM - 20 NIVELES</title>
+    <title>DOOM GEMINI: ETERNAL JS</title>
     <style>
-        /* Estilos de la interfaz */
-        body { 
-            background: #050505; 
-            color: #ff0000; 
-            text-align: center; 
-            font-family: 'Courier New', Courier, monospace; 
-            margin: 0;
-            overflow: hidden;
-        }
-        canvas { 
-            border: 5px solid #333; 
-            box-shadow: 0 0 30px #f00; 
-            background: #000;
-            margin-top: 20px;
-        }
-        #ui-layer {
-            position: absolute;
-            top: 20px;
-            width: 100%;
-            pointer-events: none;
-        }
-        #hud {
-            display: flex;
-            justify-content: space-around;
-            background: rgba(50, 0, 0, 0.8);
-            padding: 10px;
-            border-top: 4px solid #900;
-            position: fixed;
-            bottom: 0;
-            width: 100%;
-        }
-        .stat-box { font-size: 24px; font-weight: bold; }
-        .stat-value { color: white; }
+        body { background: #000; color: #f00; text-align: center; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        canvas { border: 4px solid #600; background: #000; cursor: crosshair; }
+        #hud { display: flex; justify-content: space-around; background: #200; padding: 15px; position: fixed; bottom: 0; width: 100%; font-size: 22px; border-top: 4px solid #f00; }
+        #start-screen { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); display: flex; flex-direction: column; justify-content: center; align-items: center; z-index: 10; }
+        button { padding: 20px 40px; font-size: 30px; background: #f00; color: #fff; border: none; cursor: pointer; font-family: 'Courier New'; }
+        button:hover { background: #900; }
+        .stat { color: #fff; }
     </style>
 </head>
 <body>
 
-    <h2 id="msg">NIVEL 1: ENTRADA AL CAOS</h2>
-    <canvas id="game" width="800" height="450"></canvas>
+    <div id="start-screen">
+        <h1 style="font-size: 80px; margin-bottom: 10px;">DOOM</h1>
+        <p style="color: #fff;">20 NIVELES DE PURO JS-INFIERNO</p>
+        <button onclick="startGame()">INICIAR PARTIDA</button>
+    </div>
+
+    <h2 id="msg">NIVEL 1</h2>
+    <canvas id="game" width="800" height="400"></canvas>
 
     <div id="hud">
-        <div class="stat-box">SALUD: <span id="hp" class="stat-value">100</span>%</div>
-        <div class="stat-box">ARMA: <span id="gun" class="stat-value">PISTOLA</span></div>
-        <div class="stat-box">PUNTOS: <span id="score" class="stat-value">0</span></div>
-        <div class="stat-box">NIVEL: <span id="lvl" class="stat-value">1</span>/20</div>
+        <div class="stat">SALUD: <span id="hp">100</span>%</div>
+        <div class="stat">ARMA: <span id="gun">PISTOLA</span></div>
+        <div class="stat">NIVEL: <span id="lvl">1</span>/20</div>
+        <div class="stat">PUNTOS: <span id="score">0</span></div>
     </div>
+
+    <audio id="doomMusic" loop>
+        <source src="https://ia801309.us.archive.org/28/items/OldVideoGameThemes/Doom-E1m1.mp3" type="audio/mpeg">
+    </audio>
 
     <script>
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
+        const music = document.getElementById('doomMusic');
+        
+        // Contexto de audio para efectos
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
-        // --- CONFIGURACIÓN Y VARIABLES ---
-        let game = {
-            running: true,
-            level: 1,
-            score: 0,
-            health: 100,
-            weapon: "PISTOLA",
-            difficulty: 1
-        };
-
+        let game = { running: false, level: 1, score: 0, health: 100, weapon: "PISTOLA" };
         let player = { x: 2, y: 2, dir: 0, rot: 0, speed: 0 };
         let map = [];
         let enemies = [];
-        let items = [];
 
-        // --- GENERADOR DE NIVELES ---
-        function loadLevel(n) {
+        function playSound(freq, type, duration) {
+            if(!game.running) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type;
+            osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            gain.gain.setValueAtTime(0.1, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + duration);
+            osc.start();
+            osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function startGame() {
+            document.getElementById('start-screen').style.display = 'none';
+            game.running = true;
+            music.play();
+            initLevel(1);
+            update();
+        }
+
+        function createMap() {
+            map = [
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,0,0,0,1,0,0,0,0,0,0,1],
+                [1,0,1,1,1,0,0,1,0,1,1,1,1,0,1],
+                [1,0,1,0,0,0,0,0,0,0,0,0,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+                [1,0,1,1,1,0,1,1,1,1,1,0,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,0,0,2,1],
+                [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+            ];
+        }
+
+        function initLevel(n) {
             game.level = n;
             game.health = 100;
             player.x = 2; player.y = 2;
-            document.getElementById('lvl').innerText = n;
-            document.getElementById('msg').innerText = n === 20 ? "¡JEFE FINAL: EL NÚCLEO!" : "NIVEL " + n;
-
-            // Crear paredes (1), Salida (2)
-            map = [
-                [1,1,1,1,1,1,1,1,1,1,1,1],
-                [1,0,0,0,0,0,0,1,0,0,0,1],
-                [1,0,1,1,0,1,0,1,0,1,0,1],
-                [1,0,0,0,0,1,0,0,0,1,0,1],
-                [1,0,1,1,1,1,1,1,0,1,0,1],
-                [1,0,0,0,0,0,0,0,0,0,0,1],
-                [1,1,1,0,1,1,1,1,1,1,0,1],
-                [1,0,0,0,0,0,0,0,0,1,0,1],
-                [1,0,1,1,1,1,1,1,0,1,0,1],
-                [1,0,0,0,0,0,0,0,0,0,2,1],
-                [1,1,1,1,1,1,1,1,1,1,1,1]
-            ];
-
-            // Enemigos escalables
+            createMap();
             enemies = [];
-            let count = n === 20 ? 1 : 2 + n; 
-            for(let i=0; i<count; i++) {
+            let count = (n === 20) ? 1 : 2 + n;
+            for(let i=0; i < count; i++) {
                 enemies.push({
-                    x: 5 + Math.random()*5, 
-                    y: 5 + Math.random()*4, 
-                    hp: n === 20 ? 2000 : 60 + (n*10),
-                    isBoss: n === 20
+                    x: 6 + Math.random() * 6,
+                    y: 2 + Math.random() * 4,
+                    hp: (n === 20) ? 2000 : 50 + (n*15),
+                    isBoss: (n === 20),
+                    speed: 0.01 + (n * 0.002)
                 });
             }
-            // Items de curación
-            items = [{x: 5, y: 1, type: 'medkit'}];
+            document.getElementById('lvl').innerText = n;
+            document.getElementById('msg').innerText = n === 20 ? "¡MATALOS A TODOS!" : "NIVEL " + n;
         }
 
-        // --- LÓGICA DE DISPARO ---
-        function fire() {
-            if(!game.running) return;
-            let damage = game.weapon === "PISTOLA" ? 30 : 120; // La especial hace más daño
-            
+        function shoot() {
+            playSound(150, 'sawtooth', 0.1); // Sonido disparo
+            let damage = (game.weapon === "PISTOLA") ? 30 : 200;
             enemies.forEach((en, i) => {
-                let angleToEn = Math.atan2(en.y - player.y, en.x - player.x);
-                let diff = Math.abs(angleToEn - player.dir);
-                if(diff < 0.2) { // Si apuntas bien
+                let dx = en.x - player.x, dy = en.y - player.y;
+                let angleToEn = Math.atan2(dy, dx);
+                let diff = angleToEn - player.dir;
+                while(diff < -Math.PI) diff += Math.PI*2;
+                while(diff > Math.PI) diff -= Math.PI*2;
+
+                if(Math.abs(diff) < 0.3) {
                     en.hp -= damage;
+                    playSound(400, 'square', 0.05); // Impacto
                     if(en.hp <= 0) {
+                        game.score += en.isBoss ? 10000 : 200;
                         enemies.splice(i, 1);
-                        game.score += 50 * game.level;
                     }
                 }
             });
-            // Efecto visual de disparo
-            ctx.fillStyle = "white";
-            ctx.fillRect(0,0,800,450);
         }
 
-        // --- MOTOR DE RENDERIZADO (RAYCASTING) ---
         function update() {
             if(!game.running) return;
 
-            // Dibujar fondo
-            ctx.fillStyle = "#111"; ctx.fillRect(0,0,800,225); // Techo
-            ctx.fillStyle = "#222"; ctx.fillRect(0,225,800,225); // Suelo
+            // Renderizado (Simplificado para rendimiento)
+            ctx.fillStyle = "#111"; ctx.fillRect(0,0,800,200);
+            ctx.fillStyle = "#222"; ctx.fillRect(0,200,800,200);
 
-            // Paredes
+            // Raycasting
             for(let i=0; i<100; i++) {
-                let angle = (player.dir - 0.5) + i/100;
+                let rayAngle = (player.dir - 0.4) + (i/100)*0.8;
                 let rx = player.x, ry = player.y;
-                let dx = Math.cos(angle)/50, dy = Math.sin(angle)/50;
+                let vx = Math.cos(rayAngle), vy = Math.sin(rayAngle);
                 let d = 0;
-                while(map[Math.floor(ry)][Math.floor(rx)] == 0 && d < 12) {
-                    rx += dx; ry += dy; d += 0.02;
+                while(d < 15) {
+                    d += 0.05;
+                    let tx = Math.floor(player.x + vx * d), ty = Math.floor(player.y + vy * d);
+                    if(map[ty] && map[ty][tx] > 0) {
+                        let h = 400 / (d * Math.cos(rayAngle - player.dir));
+                        ctx.fillStyle = map[ty][tx] === 2 ? "#0f0" : `rgb(${150-d*10}, 0, 0)`;
+                        ctx.fillRect(i*8, 200-h/2, 8, h);
+                        break;
+                    }
                 }
-                let wall = map[Math.floor(ry)][Math.floor(rx)];
-                let h = 450 / (d * Math.cos(angle - player.dir));
-                ctx.fillStyle = wall === 2 ? "#0f0" : `rgb(${150-d*10}, 0, 0)`;
-                ctx.fillRect(i*8, 225-h/2, 8, h);
             }
 
-            // Enemigos
+            // IA Enemigos y Renderizado
             enemies.forEach(en => {
-                let dx = en.x - player.x, dy = en.y - player.y;
+                // Movimiento IA: perseguir al jugador
+                let dx = player.x - en.x, dy = player.y - en.y;
                 let dist = Math.sqrt(dx*dx + dy*dy);
-                let ang = Math.atan2(dy, dx) - player.dir;
-                if(dist < 10 && Math.abs(ang) < 1) {
-                    let s = 400 / dist;
-                    ctx.fillStyle = en.isBoss ? "#f0f" : "#ffa500";
-                    ctx.fillRect(400 + ang*800 - s/2, 225 - s/2, s, s);
-                    if(dist < 1.2) game.health -= 0.5; // El enemigo te muerde
+                en.x += (dx/dist) * en.speed;
+                en.y += (dy/dist) * en.speed;
+
+                // Dibujar Enemigo
+                let angle = Math.atan2(dy, dx) - player.dir;
+                while(angle < -Math.PI) angle += Math.PI*2;
+                while(angle > Math.PI) angle -= Math.PI*2;
+
+                if(dist < 10 && Math.abs(angle) < 1) {
+                    let s = (en.isBoss ? 800 : 400) / dist;
+                    ctx.fillStyle = en.isBoss ? "#f0f" : "#f80";
+                    ctx.fillRect((angle*800)+400-s/2, 200-s/2, s, s);
+                    if(dist < 0.6) {
+                        game.health -= 0.5;
+                        playSound(100, 'sine', 0.1); // Sonido daño
+                    }
                 }
             });
 
-            // Arma
-            ctx.fillStyle = "#444";
-            ctx.fillRect(350, 320, 100, 130);
-
-            // UI Update
-            document.getElementById('hp').innerText = Math.floor(game.health);
-            document.getElementById('score').innerText = game.score;
-            document.getElementById('gun').innerText = game.weapon;
-
-            // Movimiento
+            // Movimiento Jugador
             player.dir += player.rot;
             let nx = player.x + Math.cos(player.dir)*player.speed;
             let ny = player.y + Math.sin(player.dir)*player.speed;
-            if(map[Math.floor(ny)][Math.floor(nx)] !== 1) {
+            if(map[Math.floor(ny)] && map[Math.floor(ny)][Math.floor(nx)] !== 1) {
                 player.x = nx; player.y = ny;
             }
 
-            // Meta o Muerte
+            // HUD
+            document.getElementById('hp').innerText = Math.max(0, Math.floor(game.health));
+            document.getElementById('score').innerText = game.score;
+
             if(map[Math.floor(player.y)][Math.floor(player.x)] === 2) {
-                if(game.level < 20) loadLevel(game.level + 1);
-                else win();
+                if(game.level < 20) initLevel(game.level + 1);
+                else { alert("¡VICTORIA! ERES EL REY DEL INFIERNO"); location.reload(); }
             }
-            if(game.health <= 0) die();
+            if(game.health <= 0) { alert("HAS MUERTO"); location.reload(); }
 
             requestAnimationFrame(update);
         }
 
-        function die() { game.running = false; alert("HAS MUERTO. PUNTOS: " + game.score); location.reload(); }
-        function win() { game.running = false; alert("¡VICTORIA TOTAL SOBRE EL INFIERNO!"); }
-
-        // --- CONTROLES ---
         window.onkeydown = e => {
-            if(e.key === "w") player.speed = 0.07;
-            if(e.key === "s") player.speed = -0.07;
-            if(e.key === "a") player.rot = -0.05;
-            if(e.key === "d") player.rot = 0.05;
-            if(e.key === " ") fire();
-            if(e.key === "q") game.weapon = game.weapon === "PISTOLA" ? "BFC-9000" : "PISTOLA";
+            if(e.key === 'w') player.speed = 0.08;
+            if(e.key === 's') player.speed = -0.08;
+            if(e.key === 'a') player.rot = -0.05;
+            if(e.key === 'd') player.rot = 0.05;
+            if(e.key === ' ') shoot();
+            if(e.key === 'q') {
+                game.weapon = (game.weapon === "PISTOLA") ? "SUPER ARMA" : "PISTOLA";
+                document.getElementById('gun').innerText = game.weapon;
+                playSound(600, 'sine', 0.1);
+            }
         };
         window.onkeyup = e => {
-            if("ws".includes(e.key)) player.speed = 0;
-            if("ad".includes(e.key)) player.rot = 0;
+            if('ws'.includes(e.key)) player.speed = 0;
+            if('ad'.includes(e.key)) player.rot = 0;
         };
-
-        loadLevel(1);
-        update();
     </script>
 </body>
 </html>
