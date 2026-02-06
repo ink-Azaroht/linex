@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini DOOM JS</title>
+    <style>
+        body { background: #111; color: white; text-align: center; font-family: sans-serif; }
+        canvas { border: 2px solid #555; background: #000; }
+    </style>
+</head>
+<body>
+    <h1>GEMINI DOOM</h1>
+    <canvas id="game" width="640" height="480"></canvas>
+    <p>Usa las flechas o WASD para moverte</p>
+
+    <script>
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+
+        const map = [
+            [1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,0,1,1,1,0,1],
+            [1,0,1,0,0,0,0,1,0,1],
+            [1,0,0,0,1,1,0,0,0,1],
+            [1,0,1,0,1,1,0,1,0,1],
+            [1,0,1,0,0,0,0,1,0,1],
+            [1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        let player = { x: 2, y: 2, dir: 0, rot: 0, speed: 0 };
+
+        function draw() {
+            ctx.clearRect(0, 0, 640, 480);
+            
+            // Suelo y techo
+            ctx.fillStyle = "#333"; ctx.fillRect(0, 240, 640, 240);
+            ctx.fillStyle = "#111"; ctx.fillRect(0, 0, 640, 240);
+
+            // Raycasting (Lógica de renderizado 3D)
+            for(let i=0; i<120; i++) {
+                let angle = (player.dir - 0.5) + i/120;
+                let x = player.x, y = player.y;
+                let cos = Math.cos(angle)/100, sin = Math.sin(angle)/100;
+                
+                let dist = 0;
+                while(map[Math.floor(y)][Math.floor(x)] == 0 && dist < 20) {
+                    x += cos; y += sin; dist += 0.01;
+                }
+
+                let h = 400 / (dist * Math.cos(angle - player.dir));
+                ctx.fillStyle = `rgb(${255-dist*20}, 0, 0)`; // Paredes rojas estilo DOOM
+                ctx.fillRect(i * (640/120), 240 - h/2, 640/120, h);
+            }
+
+            player.dir += player.rot;
+            let newX = player.x + Math.cos(player.dir) * player.speed;
+            let newY = player.y + Math.sin(player.dir) * player.speed;
+            
+            if(map[Math.floor(newY)][Math.floor(newX)] == 0) {
+                player.x = newX; player.y = newY;
+            }
+            requestAnimationFrame(draw);
+        }
+
+        window.onkeydown = e => {
+            if(e.key == "ArrowLeft" || e.key == "a") player.rot = -0.05;
+            if(e.key == "ArrowRight" || e.key == "d") player.rot = 0.05;
+            if(e.key == "ArrowUp" || e.key == "w") player.speed = 0.05;
+            if(e.key == "ArrowDown" || e.key == "s") player.speed = -0.05;
+        };
+        window.onkeyup = e => {
+            if(["ArrowLeft", "ArrowRight", "a", "d"].includes(e.key)) player.rot = 0;
+            if(["ArrowUp", "ArrowDown", "w", "s"].includes(e.key)) player.speed = 0;
+        };
+
+        draw();
+    </script>
+</body>
+</html>
