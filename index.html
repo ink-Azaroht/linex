@@ -1,79 +1,216 @@
 <!DOCTYPE html>
-<html>
+<html lang="es">
 <head>
-    <title>Mini DOOM JS</title>
+    <meta charset="UTF-8">
+    <title>GEMINI DOOM - 20 NIVELES</title>
     <style>
-        body { background: #111; color: white; text-align: center; font-family: sans-serif; }
-        canvas { border: 2px solid #555; background: #000; }
+        /* Estilos de la interfaz */
+        body { 
+            background: #050505; 
+            color: #ff0000; 
+            text-align: center; 
+            font-family: 'Courier New', Courier, monospace; 
+            margin: 0;
+            overflow: hidden;
+        }
+        canvas { 
+            border: 5px solid #333; 
+            box-shadow: 0 0 30px #f00; 
+            background: #000;
+            margin-top: 20px;
+        }
+        #ui-layer {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            pointer-events: none;
+        }
+        #hud {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(50, 0, 0, 0.8);
+            padding: 10px;
+            border-top: 4px solid #900;
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+        }
+        .stat-box { font-size: 24px; font-weight: bold; }
+        .stat-value { color: white; }
     </style>
 </head>
 <body>
-    <h1>GEMINI DOOM</h1>
-    <canvas id="game" width="640" height="480"></canvas>
-    <p>Usa las flechas o WASD para moverte</p>
+
+    <h2 id="msg">NIVEL 1: ENTRADA AL CAOS</h2>
+    <canvas id="game" width="800" height="450"></canvas>
+
+    <div id="hud">
+        <div class="stat-box">SALUD: <span id="hp" class="stat-value">100</span>%</div>
+        <div class="stat-box">ARMA: <span id="gun" class="stat-value">PISTOLA</span></div>
+        <div class="stat-box">PUNTOS: <span id="score" class="stat-value">0</span></div>
+        <div class="stat-box">NIVEL: <span id="lvl" class="stat-value">1</span>/20</div>
+    </div>
 
     <script>
         const canvas = document.getElementById('game');
         const ctx = canvas.getContext('2d');
 
-        const map = [
-            [1,1,1,1,1,1,1,1,1,1],
-            [1,0,0,0,0,0,0,0,0,1],
-            [1,0,1,1,0,1,1,1,0,1],
-            [1,0,1,0,0,0,0,1,0,1],
-            [1,0,0,0,1,1,0,0,0,1],
-            [1,0,1,0,1,1,0,1,0,1],
-            [1,0,1,0,0,0,0,1,0,1],
-            [1,1,1,1,1,1,1,1,1,1]
-        ];
+        // --- CONFIGURACIÓN Y VARIABLES ---
+        let game = {
+            running: true,
+            level: 1,
+            score: 0,
+            health: 100,
+            weapon: "PISTOLA",
+            difficulty: 1
+        };
 
         let player = { x: 2, y: 2, dir: 0, rot: 0, speed: 0 };
+        let map = [];
+        let enemies = [];
+        let items = [];
 
-        function draw() {
-            ctx.clearRect(0, 0, 640, 480);
-            
-            // Suelo y techo
-            ctx.fillStyle = "#333"; ctx.fillRect(0, 240, 640, 240);
-            ctx.fillStyle = "#111"; ctx.fillRect(0, 0, 640, 240);
+        // --- GENERADOR DE NIVELES ---
+        function loadLevel(n) {
+            game.level = n;
+            game.health = 100;
+            player.x = 2; player.y = 2;
+            document.getElementById('lvl').innerText = n;
+            document.getElementById('msg').innerText = n === 20 ? "¡JEFE FINAL: EL NÚCLEO!" : "NIVEL " + n;
 
-            // Raycasting (Lógica de renderizado 3D)
-            for(let i=0; i<120; i++) {
-                let angle = (player.dir - 0.5) + i/120;
-                let x = player.x, y = player.y;
-                let cos = Math.cos(angle)/100, sin = Math.sin(angle)/100;
-                
-                let dist = 0;
-                while(map[Math.floor(y)][Math.floor(x)] == 0 && dist < 20) {
-                    x += cos; y += sin; dist += 0.01;
-                }
+            // Crear paredes (1), Salida (2)
+            map = [
+                [1,1,1,1,1,1,1,1,1,1,1,1],
+                [1,0,0,0,0,0,0,1,0,0,0,1],
+                [1,0,1,1,0,1,0,1,0,1,0,1],
+                [1,0,0,0,0,1,0,0,0,1,0,1],
+                [1,0,1,1,1,1,1,1,0,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,0,1],
+                [1,1,1,0,1,1,1,1,1,1,0,1],
+                [1,0,0,0,0,0,0,0,0,1,0,1],
+                [1,0,1,1,1,1,1,1,0,1,0,1],
+                [1,0,0,0,0,0,0,0,0,0,2,1],
+                [1,1,1,1,1,1,1,1,1,1,1,1]
+            ];
 
-                let h = 400 / (dist * Math.cos(angle - player.dir));
-                ctx.fillStyle = `rgb(${255-dist*20}, 0, 0)`; // Paredes rojas estilo DOOM
-                ctx.fillRect(i * (640/120), 240 - h/2, 640/120, h);
+            // Enemigos escalables
+            enemies = [];
+            let count = n === 20 ? 1 : 2 + n; 
+            for(let i=0; i<count; i++) {
+                enemies.push({
+                    x: 5 + Math.random()*5, 
+                    y: 5 + Math.random()*4, 
+                    hp: n === 20 ? 2000 : 60 + (n*10),
+                    isBoss: n === 20
+                });
             }
-
-            player.dir += player.rot;
-            let newX = player.x + Math.cos(player.dir) * player.speed;
-            let newY = player.y + Math.sin(player.dir) * player.speed;
-            
-            if(map[Math.floor(newY)][Math.floor(newX)] == 0) {
-                player.x = newX; player.y = newY;
-            }
-            requestAnimationFrame(draw);
+            // Items de curación
+            items = [{x: 5, y: 1, type: 'medkit'}];
         }
 
+        // --- LÓGICA DE DISPARO ---
+        function fire() {
+            if(!game.running) return;
+            let damage = game.weapon === "PISTOLA" ? 30 : 120; // La especial hace más daño
+            
+            enemies.forEach((en, i) => {
+                let angleToEn = Math.atan2(en.y - player.y, en.x - player.x);
+                let diff = Math.abs(angleToEn - player.dir);
+                if(diff < 0.2) { // Si apuntas bien
+                    en.hp -= damage;
+                    if(en.hp <= 0) {
+                        enemies.splice(i, 1);
+                        game.score += 50 * game.level;
+                    }
+                }
+            });
+            // Efecto visual de disparo
+            ctx.fillStyle = "white";
+            ctx.fillRect(0,0,800,450);
+        }
+
+        // --- MOTOR DE RENDERIZADO (RAYCASTING) ---
+        function update() {
+            if(!game.running) return;
+
+            // Dibujar fondo
+            ctx.fillStyle = "#111"; ctx.fillRect(0,0,800,225); // Techo
+            ctx.fillStyle = "#222"; ctx.fillRect(0,225,800,225); // Suelo
+
+            // Paredes
+            for(let i=0; i<100; i++) {
+                let angle = (player.dir - 0.5) + i/100;
+                let rx = player.x, ry = player.y;
+                let dx = Math.cos(angle)/50, dy = Math.sin(angle)/50;
+                let d = 0;
+                while(map[Math.floor(ry)][Math.floor(rx)] == 0 && d < 12) {
+                    rx += dx; ry += dy; d += 0.02;
+                }
+                let wall = map[Math.floor(ry)][Math.floor(rx)];
+                let h = 450 / (d * Math.cos(angle - player.dir));
+                ctx.fillStyle = wall === 2 ? "#0f0" : `rgb(${150-d*10}, 0, 0)`;
+                ctx.fillRect(i*8, 225-h/2, 8, h);
+            }
+
+            // Enemigos
+            enemies.forEach(en => {
+                let dx = en.x - player.x, dy = en.y - player.y;
+                let dist = Math.sqrt(dx*dx + dy*dy);
+                let ang = Math.atan2(dy, dx) - player.dir;
+                if(dist < 10 && Math.abs(ang) < 1) {
+                    let s = 400 / dist;
+                    ctx.fillStyle = en.isBoss ? "#f0f" : "#ffa500";
+                    ctx.fillRect(400 + ang*800 - s/2, 225 - s/2, s, s);
+                    if(dist < 1.2) game.health -= 0.5; // El enemigo te muerde
+                }
+            });
+
+            // Arma
+            ctx.fillStyle = "#444";
+            ctx.fillRect(350, 320, 100, 130);
+
+            // UI Update
+            document.getElementById('hp').innerText = Math.floor(game.health);
+            document.getElementById('score').innerText = game.score;
+            document.getElementById('gun').innerText = game.weapon;
+
+            // Movimiento
+            player.dir += player.rot;
+            let nx = player.x + Math.cos(player.dir)*player.speed;
+            let ny = player.y + Math.sin(player.dir)*player.speed;
+            if(map[Math.floor(ny)][Math.floor(nx)] !== 1) {
+                player.x = nx; player.y = ny;
+            }
+
+            // Meta o Muerte
+            if(map[Math.floor(player.y)][Math.floor(player.x)] === 2) {
+                if(game.level < 20) loadLevel(game.level + 1);
+                else win();
+            }
+            if(game.health <= 0) die();
+
+            requestAnimationFrame(update);
+        }
+
+        function die() { game.running = false; alert("HAS MUERTO. PUNTOS: " + game.score); location.reload(); }
+        function win() { game.running = false; alert("¡VICTORIA TOTAL SOBRE EL INFIERNO!"); }
+
+        // --- CONTROLES ---
         window.onkeydown = e => {
-            if(e.key == "ArrowLeft" || e.key == "a") player.rot = -0.05;
-            if(e.key == "ArrowRight" || e.key == "d") player.rot = 0.05;
-            if(e.key == "ArrowUp" || e.key == "w") player.speed = 0.05;
-            if(e.key == "ArrowDown" || e.key == "s") player.speed = -0.05;
+            if(e.key === "w") player.speed = 0.07;
+            if(e.key === "s") player.speed = -0.07;
+            if(e.key === "a") player.rot = -0.05;
+            if(e.key === "d") player.rot = 0.05;
+            if(e.key === " ") fire();
+            if(e.key === "q") game.weapon = game.weapon === "PISTOLA" ? "BFC-9000" : "PISTOLA";
         };
         window.onkeyup = e => {
-            if(["ArrowLeft", "ArrowRight", "a", "d"].includes(e.key)) player.rot = 0;
-            if(["ArrowUp", "ArrowDown", "w", "s"].includes(e.key)) player.speed = 0;
+            if("ws".includes(e.key)) player.speed = 0;
+            if("ad".includes(e.key)) player.rot = 0;
         };
 
-        draw();
+        loadLevel(1);
+        update();
     </script>
 </body>
 </html>
